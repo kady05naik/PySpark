@@ -377,3 +377,152 @@ along with the Spark DataFrame salaries_df.
 -Find the maximum salary at a US, Large company, denoted by a "L" - 
     performing the filtering by referencing the column directly ("salary_in_usd"), not passing a SQL string.
 '''
+
+#approach 1 (Recommmended) ->
+#Importing min and max from sql/functions
+from pyspark.sql.functions import min, max
+
+# Find the minimum salaries for small companies
+salaries_df.filter(col("company_size") == "S") \
+    .groupBy("company_size") \
+    .agg(min("salary_in_usd").alias("min_salary")) \
+    .show()
+
+#Importing min and max from sql/functions
+from pyspark.sql.functions import min, max
+
+# Find the maximum salaries for small companies
+salaries_df.filter(col("company_size") == "S") \
+    .groupBy("company_size") \
+    .agg(max("salary_in_usd").alias("min_salary")) \
+    .show()
+
+
+#approach 2 ->
+# Find the minimum salaries for small companies
+salaries_df.filter(salaries_df.company_size == "S").groupBy("company_size").agg({'salary_in_usd' : 'min'}).show()
+
+# Find the maximum salaries for large companies
+salaries_df.filter(salaries_df.company_size =='L').groupBy("company_size").agg({"salary_in_usd" : "max"}).show()
+
+
+#approach 3->
+# Find the minimum salaries for small companies
+salaries_df.filter(salaries_df.company_size == "S").groupBy("company_size").min('salary_in_usd').show()
+
+# Find the maximum salaries for large companies
+salaries_df.filter(salaries_df.company_size =='L').groupBy("company_size").max("salary_in_usd").show()
+
+
+
+'''
+Q:17
+Now that you have conducted analytics with DataFrames in PySpark, let's briefly do a similar task with an RDD. 
+Get the sum of the values of an RDD in PySpark.
+
+-Create an RDD from the provided DataFrame.
+-Apply the provided Lambda Function to the keys of the RDD.
+-Collect the results of the aggregation.
+'''
+
+# DataFrame Creation
+data = [("HR", "3000"), ("IT", "4000"), ("Finance", "3500")]
+columns = ["Department", "Salary"]
+df = spark.createDataFrame(data, schema=columns)
+
+# Map the DataFrame to an RDD
+rdd = df.rdd.map(lambda row: (row["Department"], row["Salary"]))
+
+# Apply a lambda function to get the sum of the DataFrame
+rdd_aggregated = rdd.reduceByKey(lambda x, y: x + y)
+
+# Show the collected Results
+print(rdd_aggregated.collect())
+
+
+
+'''
+Q:18
+To get you familiar with more of the built in aggregation methods, 
+let's do a slightly more complex aggregation! The goal is to merge all these commands into a single line.
+-Calculate the average salaries of large US companies using the "salary_in_usd" column.
+-Calculate the total salaries of large US companies.
+'''
+
+#approach 1 (Recommended)
+from pyspark.sql.functions import col
+# Average salaries at large us companies
+large_companies=salaries_df \
+    .filter(salaries_df.company_size == "L") \
+    .filter(salaries_df.company_location == "US") \
+    .groupBy().agg(avg("salary_in_usd").alias("avg_salary"))
+ 
+#set a large companies variable for other analytics
+large_companies=salaries_df \
+    .filter(salaries_df.company_size == "L") \
+    .filter(salaries_df.company_location == "US")
+
+# Total salaries in usd
+large_companies.groupBy().agg(sum("salary_in_usd").alias("total_salary")).show()
+
+
+#approach 2
+from pyspark.sql.functions import col
+# Average salaries at large us companies
+large_companies=salaries_df.filter(salaries_df.company_size == "L").filter(salaries_df.company_location == "US").groupBy().avg("salary_in_usd")
+ 
+#set a large companies variable for other analytics
+large_companies=salaries_df.filter(salaries_df.company_size == "L").filter(salaries_df.company_location == "US")
+
+# Total salaries in usd
+large_companies.groupBy().sum("salary_in_usd").show()
+
+
+
+'''
+Q:19
+-Import SparkSession from pyspark.sql.
+-Make a new SparkSession called final_spark using SparkSession.builder.getOrCreate().
+-Print my_spark to the console to verify it's a SparkSession.
+-Create a new DataFrame from a preloaded schema and column definition.
+'''
+# Import SparkSession from pyspark.sql
+from pyspark.sql import SparkSession
+
+# Create my_spark
+my_spark = SparkSession.builder.appName('final_spark').getOrCreate()
+
+# Print my_spark
+print(my_spark)
+
+# Load dataset into a DataFrame
+df = my_spark.createDataFrame(data, schema=columns)
+
+df.show()
+
+
+
+'''
+Q:20
+Create a DataFrame, apply transformations, cache it, and check if it’s cached. 
+Then, uncache it to release memory. Look carefully at the outcome of the .explain() method 
+to understand what the outcome is!
+
+Steps:
+-Cache the df DataFrame.
+-Explain the processing of the agg_result DataFrame.
+-Unpersist the cached df DataFrame after processing.
+'''
+
+# Cache the DataFrame
+df.cache()
+
+# Perform aggregation
+agg_result = df.groupBy("Department").sum("Salary")
+agg_result.show()
+
+# Analyze the execution plan
+agg_result.explain()
+
+# Uncache the DataFrame
+df.unpersist()
